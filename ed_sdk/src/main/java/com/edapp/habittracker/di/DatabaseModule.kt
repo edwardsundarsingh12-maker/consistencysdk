@@ -8,6 +8,7 @@ import com.edapp.habittracker.data.HabitDao
 import com.edapp.habittracker.data.HabitDatabase
 import com.edapp.habittracker.data.HabitDatabase.Companion.MIGRATION_1_2
 import com.edapp.habittracker.data.HabitRepository
+import com.edapp.habittracker.util.SDK
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -52,5 +53,9 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideHabitRepository(dao: HabitDao): HabitRepository = HabitRepository(dao)
+    fun provideHabitRepository(dao: HabitDao): HabitRepository {
+        val repo = HabitRepository(dao)
+        SDK.initRepository(repo)
+        return repo
+    }
 }
