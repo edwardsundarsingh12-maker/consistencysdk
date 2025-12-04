@@ -20,5 +20,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "consistencysdk"
-include(":app")
+include(":sample_app")
 include(":ed_sdk")
