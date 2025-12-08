@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     id("org.jetbrains.kotlin.kapt")
+    id("com.android.library")
+    id("org.jetbrains.kotlin.android")
     // if you need protobuf
     // alias(libs.plugins.protobuf)
 }
