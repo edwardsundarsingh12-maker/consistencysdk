@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.android.library)   // ✅ Use library plugin
+    alias(libs.plugins.android.library)      // ✅ Correct for SDK
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.hilt)
@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     id("org.jetbrains.kotlin.kapt")
 }
+
 
 
 android {
