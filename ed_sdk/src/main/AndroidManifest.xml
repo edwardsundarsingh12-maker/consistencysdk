@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:tools="http://schemas.android.com/tools"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Needed permissions -->
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -9,18 +10,20 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"
         tools:ignore="ExactAlarm" />
 
-    <application>
-        <receiver android:name="com.edapp.habittracker.domain.ReminderReceiver" />
-        <receiver
-            android:name="com.edapp.habittracker.domain.BootReceiver"
-            android:exported="true">
+    <!-- DECLARE RECEIVERS DIRECTLY INSIDE MANIFEST (no <application>) -->
 
-            <!-- If your receiver needs BOOT COMPLETED -->
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-            </intent-filter>
+    <receiver
+        android:name="com.edapp.habittracker.domain.ReminderReceiver"
+        android:exported="true" />
 
-        </receiver>
-    </application>
+    <receiver
+        android:name="com.edapp.habittracker.domain.BootReceiver"
+        android:exported="true">
+
+        <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        </intent-filter>
+
+    </receiver>
 
 </manifest>
