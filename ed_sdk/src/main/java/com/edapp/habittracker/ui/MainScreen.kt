@@ -14,6 +14,7 @@ import com.edapp.habittracker.ui.components.ToolbarWithAnimation
 import com.edapp.habittracker.ui.consitency.ConsistencysRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -160,7 +161,7 @@ fun ConsistencyRowView(
                             .background(habitBgColor)
                             .padding(8.dp)
                             .clickable(indication = null, interactionSource = null) {
-                                if (SDK.config.enableRowEditOption){
+                                if (SDK.config.enableRowEditOption) {
                                     selectedHabitIndex = index
                                     openCalenderDatePicker.value = !openCalenderDatePicker.value
                                 }
@@ -281,6 +282,158 @@ fun ConsistencyRowView(
     }
 }
 
+@Composable
+fun ConsistencyRowViewWithOutScroll(
+    viewModel: HabitViewModel,
+    padding: PaddingValues,
+    showBottomSheetToUpdateConsistencyCalenderValues: Boolean
+) {
+    val habits by viewModel.habits.collectAsState()
+    val isRowView by viewModel.isRowView.collectAsState()
+
+    val context = LocalContext.current
+    val habitBgColor = if (context.isDarkTheme()) {
+        MaterialTheme.colorScheme.background.lighten(0.05f)
+    } else {
+        MaterialTheme.colorScheme.background.darken(0.95f)
+    }
+
+    val openCalenderDatePicker = remember { mutableStateOf(false) }
+    var selectedHabitIndex by remember { mutableStateOf(0) }
+
+    Column(modifier = Modifier.padding(padding)) {
+
+        if (habits.isEmpty()) {
+            FullScreenLoader(color = MaterialTheme.colorScheme.primary)
+            return@Column
+        }
+
+        // =========================
+        // ROW VIEW (NO SCROLL)
+        // =========================
+        if (isRowView) {
+            habits.forEachIndexed { index, habit ->
+                Column(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(habitBgColor)
+                        .padding(8.dp)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            if (SDK.config.enableRowEditOption) {
+                                selectedHabitIndex = index
+                                openCalenderDatePicker.value = true
+                            }
+                        }
+                ) {
+                    HabitStatus(
+                        title = habit.title,
+                        description = habit.description,
+                        isRowView = true,
+                        habitIcon = habit.icon,
+                        activeColor = habit.color,
+                        uncheckedColorValue = habit.uncheckedColorValue,
+                        todayHabitStatus = habit.todayHabitStatus
+                    ) {
+                        viewModel.updateTodayProgress(it, habit.id)
+                    }
+
+                    ConsistencysRow(habit, viewModel)
+                }
+            }
+        }
+        // =========================
+        // GRID VIEW (NO SCROLL)
+        // =========================
+        else {
+            FlowRow(
+                maxItemsInEachRow = 2,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                habits.forEachIndexed { index, habit ->
+                    val year = habit.years.lastOrNull()
+                    val month = year?.months?.lastOrNull()
+
+                    month?.let {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(habitBgColor)
+                                .padding(8.dp)
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) {
+                                    selectedHabitIndex = index
+                                    openCalenderDatePicker.value = true
+                                }
+                        ) {
+                            HabitStatus(
+                                title = habit.title,
+                                description = habit.description,
+                                habitIcon = habit.icon,
+                                activeColor = habit.color,
+                                todayHabitStatus = habit.todayHabitStatus,
+                                isRowView = false
+                            ) {
+                                viewModel.updateTodayProgress(it, habit.id)
+                            }
+
+                            MonthConsistencyCompose(
+                                habitMonth = it,
+                                year = year.year,
+                                viewModel = viewModel,
+                                showYear = true,
+                                cellIcon = habit.consistencyIcon,
+                                activeColor = habit.color,
+                                uncheckedColorValue = habit.uncheckedColorValue,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // =========================
+    // BACKGROUND BLUR
+    // =========================
+    if (openCalenderDatePicker.value) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(20.dp)
+                .background(Color.Black.copy(alpha = 0.80f))
+        )
+    }
+
+    // =========================
+    // BOTTOM SHEET
+    // =========================
+    if (openCalenderDatePicker.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && showBottomSheetToUpdateConsistencyCalenderValues) {
+        HabitCalendarBottomSheet(
+            habits[selectedHabitIndex],
+            viewModel,
+            onDismiss = { openCalenderDatePicker.value = false },
+            onDayClick = { localDay, habitStatus, habitOwnerId ->
+                if (habitStatus != null && habitOwnerId != null) {
+                    viewModel.updateProgressByEpoDay(
+                        habitStatus,
+                        habitOwnerId,
+                        localDay.toEpochDay()
+                    )
+                }
+            }
+        )
+    }
+}
+
 
 @Composable
 fun HabitStatus(
@@ -291,6 +444,7 @@ fun HabitStatus(
     todayHabitStatus: HabitStatusEnum,
     title: String = " Do Gym Today",
     description: String = "Do My Best ",
+    showButtonForChangeTodayStatus: Boolean = true,
     updateHabitProgress: (HabitStatusEnum) -> Unit
 ) {
     Row (
@@ -301,7 +455,7 @@ fun HabitStatus(
     ){
 
         val currentDayPercentage = remember {
-            mutableFloatStateOf(todayHabitStatus.percentage.toFloat())
+            mutableFloatStateOf( if (showButtonForChangeTodayStatus) todayHabitStatus.percentage.toFloat() else 100f)
         }
 
 //        when(todayHabitStatus) {
@@ -370,22 +524,7 @@ fun HabitStatus(
                 sizeDp = 32,
                 activeColor = activeColor
             ) {
-                if (currentDayPercentage.value < 50f) {
-                    currentDayPercentage.value += 25f
-                } else if (currentDayPercentage.value == 50f) {
-                    currentDayPercentage.value += 50f
-                } else {
-                    currentDayPercentage.value = 0f
-                }
-                updateHabitProgress(HabitStatusEnum.getObjByPercentage(currentDayPercentage.value.toInt()))
-            }
-        } else {
-            if (currentDayPercentage.value != 100f) {
-                WaterFillCircle(
-                    percentage = currentDayPercentage.value,
-                    sizeDp = 32,
-                    activeColor = activeColor
-                ) {
+                if (showButtonForChangeTodayStatus){
                     if (currentDayPercentage.value < 50f) {
                         currentDayPercentage.value += 25f
                     } else if (currentDayPercentage.value == 50f) {
@@ -394,6 +533,25 @@ fun HabitStatus(
                         currentDayPercentage.value = 0f
                     }
                     updateHabitProgress(HabitStatusEnum.getObjByPercentage(currentDayPercentage.value.toInt()))
+                }
+            }
+        } else {
+            if (currentDayPercentage.value != 100f) {
+                WaterFillCircle(
+                    percentage = currentDayPercentage.value,
+                    sizeDp = 32,
+                    activeColor = activeColor
+                ) {
+                    if (showButtonForChangeTodayStatus){
+                        if (currentDayPercentage.value < 50f) {
+                            currentDayPercentage.value += 25f
+                        } else if (currentDayPercentage.value == 50f) {
+                            currentDayPercentage.value += 50f
+                        } else {
+                            currentDayPercentage.value = 0f
+                        }
+                        updateHabitProgress(HabitStatusEnum.getObjByPercentage(currentDayPercentage.value.toInt()))
+                    }
                 }
             } else {
                 if (habitIcon is IconRepresentation.Vector) {
@@ -405,12 +563,14 @@ fun HabitStatus(
                             .background(color = activeColor)
                             .size(32.dp)
                             .clickable {
-                                currentDayPercentage.value = 0f
-                                updateHabitProgress(
-                                    HabitStatusEnum.getObjByPercentage(
-                                        currentDayPercentage.value.toInt()
+                                if (showButtonForChangeTodayStatus){
+                                    currentDayPercentage.value = 0f
+                                    updateHabitProgress(
+                                        HabitStatusEnum.getObjByPercentage(
+                                            currentDayPercentage.value.toInt()
+                                        )
                                     )
-                                )
+                                }
                             }
                             .padding(4.dp)
                     )
@@ -421,12 +581,14 @@ fun HabitStatus(
                         modifier = Modifier
                             .clip(CircleShape)
                             .clickable {
-                                currentDayPercentage.value = 0f
-                                updateHabitProgress(
-                                    HabitStatusEnum.getObjByPercentage(
-                                        currentDayPercentage.value.toInt()
+                                if (showButtonForChangeTodayStatus) {
+                                    currentDayPercentage.value = 0f
+                                    updateHabitProgress(
+                                        HabitStatusEnum.getObjByPercentage(
+                                            currentDayPercentage.value.toInt()
+                                        )
                                     )
-                                )
+                                }
                             }
                             .padding(4.dp)
                     )
