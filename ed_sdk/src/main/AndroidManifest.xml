@@ -6,33 +6,67 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+
+    <!--
+      On API <= 32 exact alarms are requested via SCHEDULE_EXACT_ALARM.
+      On API 33+ this is superseded by USE_EXACT_ALARM, so cap it at 32 to
+      avoid requesting an unused permission.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <!--
+      USE_EXACT_ALARM (API 33+) is a Google Play restricted permission limited
+      to alarm-clock / calendar style apps. If reminders do not need to fire at
+      an exact minute, prefer dropping this and using an inexact alarm /
+      WorkManager instead to avoid Play Store review issues.
+    -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"
         tools:ignore="ExactAlarm" />
 
-    <!-- DECLARE RECEIVERS DIRECTLY INSIDE MANIFEST (no <application>) -->
+    <!--
+      Library components are declared inside <application> with no attributes
+      so they merge into the host app's <application> element. The host app
+      supplies icon / label / theme.
+    -->
+    <application>
 
-    <receiver
-        android:name="com.edapp.habittracker.domain.BootReceiver"
-        android:exported="true">
+        <receiver
+            android:name="com.edapp.habittracker.domain.BootReceiver"
+            android:exported="true">
 
-        <!-- If your receiver needs BOOT COMPLETED -->
-        <intent-filter>
-            <action android:name="android.intent.action.BOOT_COMPLETED"/>
-        </intent-filter>
+            <!-- Reschedules reminder alarms after a reboot -->
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
 
-    </receiver>
+        </receiver>
 
-    <!-- Habit home-screen App Widget (RemoteViews) -->
-    <receiver
-        android:name="com.edapp.habittracker.ui.widgets.HabitWidgetProvider"
-        android:exported="true">
-        <intent-filter>
-            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-        </intent-filter>
-        <meta-data
-            android:name="android.appwidget.provider"
-            android:resource="@xml/habit_widget_info" />
-    </receiver>
+        <!-- Habit home-screen App Widget (RemoteViews) -->
+        <receiver
+            android:name="com.edapp.habittracker.ui.widgets.HabitWidgetProvider"
+            android:label="@string/widget_description"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/habit_widget_info" />
+        </receiver>
+
+        <!--
+          Configuration screen launched when the widget is placed on the home
+          screen. Referenced by android:configure in res/xml/habit_widget_info.xml;
+          must be exported so the launcher can start it.
+        -->
+        <activity
+            android:name="com.edapp.habittracker.ui.widgets.HabitWidgetConfigActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+    </application>
 
 </manifest>
