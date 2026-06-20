@@ -47,7 +47,6 @@ import java.util.Locale
 @Composable
 fun HabitCalendarBottomSheet(
     habit: Habit,
-    viewModel: HabitViewModel,
     onDismiss: () -> Unit,
     onDayClick: (LocalDate, HabitStatusEnum?, Long?) -> Unit
 ) {
@@ -58,28 +57,6 @@ fun HabitCalendarBottomSheet(
         onDismissRequest = { onDismiss() },
         sheetState = sheetState
     ) {
-//        Column(
-//            modifier = Modifier
-//                .padding(8.dp)
-//                .heightIn(max = 260.dp)
-//                .clip(RoundedCornerShape(16.dp))
-//                .padding(8.dp)
-//        ) {
-//            val progressValue = remember {
-//                mutableFloatStateOf(50f)
-//            }
-//            HabitStatus(
-//                title = habit.title,
-//                description = habit.description,
-//                isRowView = true,
-//                habitIcon = habit.icon,
-//                activeColor = habit.color,
-//                todayHabitStatus = habit.todayHabitStatus
-//            ) {
-//
-//            }
-//            ConsistencysRow(habit, viewModel)
-//        }
         CalendarPagerContent(
             habit = habit,
             onDayClick = onDayClick
@@ -157,7 +134,6 @@ fun CalendarPagerContent(
             }
         }
 
-        // Weekday Row
         // Weekday Row
         Row(
             modifier = Modifier.fillMaxWidth(),

@@ -44,7 +44,7 @@ import kotlin.collections.forEach
 @Composable
 fun ConsistencysRow(
     habit: Habit,
-    viewModel: HabitViewModel
+    viewModel: HabitViewModel? = null
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -94,7 +94,7 @@ fun MonthConsistencyCompose(
     uncheckedColorValue: Color = activeColor.copy(alpha = 0.05f),
     inactiveAlpha: Float = 0.2f,
     showYear: Boolean,
-    viewModel: HabitViewModel
+    viewModel: HabitViewModel? = null
 ) {
     val month = habitMonth.month
     val yearMonth = YearMonth.of(year, month)

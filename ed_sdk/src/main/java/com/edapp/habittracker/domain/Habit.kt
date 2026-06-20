@@ -15,7 +15,10 @@ data class Habit(
     val color: Color,
     val uncheckedColorValue: Color,
     val years: List<HabitYear>,      // Grouped logs
-    val todayHabitStatus: HabitStatusEnum
+    val todayHabitStatus: HabitStatusEnum,
+    val totalDays: Int,
+    val completedDays: Int,
+    val streake: Int
 ) {
 
     fun getHabitMonth(yearMonth: YearMonth) : HabitMonth? {
