@@ -267,7 +267,6 @@ fun ConsistencyRowView(
     if (openCalenderDatePicker.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         HabitCalendarBottomSheet(
             habits[selectedHabitIndex],
-            viewModel,
             onDismiss = {
                 openCalenderDatePicker.value = false
             },
@@ -419,7 +418,6 @@ fun ConsistencyRowViewWithOutScroll(
     if (openCalenderDatePicker.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && showBottomSheetToUpdateConsistencyCalenderValues) {
         HabitCalendarBottomSheet(
             habits[selectedHabitIndex],
-            viewModel,
             onDismiss = { openCalenderDatePicker.value = false },
             onDayClick = { localDay, habitStatus, habitOwnerId ->
                 if (habitStatus != null && habitOwnerId != null) {

@@ -7,6 +7,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.edapp.habittracker.data.HabitDao
 import com.edapp.habittracker.data.HabitDatabase
 import com.edapp.habittracker.data.HabitDatabase.Companion.MIGRATION_1_2
+import com.edapp.habittracker.data.HabitDatabase.Companion.MIGRATION_2_3
+import com.edapp.habittracker.data.HabitDatabase.Companion.MIGRATION_3_4
 import com.edapp.habittracker.data.HabitRepository
 import com.edapp.habittracker.util.SDK
 import dagger.Module
@@ -42,7 +44,7 @@ object DatabaseModule {
                     }
                 }
             })
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 

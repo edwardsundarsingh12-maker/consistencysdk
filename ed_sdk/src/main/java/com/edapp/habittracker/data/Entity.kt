@@ -16,9 +16,14 @@ data class HabitEntity(
     val reminders: List<ReminderData>, // Room will store as JSON
     val orderIndex: Int = 0, // auto-managed in repository
     val colorValue: Long,  // stored as Long in DB
-    val uncheckedColorValue: Long,  // stored as Long in DB
+    val uncheckedColorValue: Long,  // stored as Long in DB (SDK-specific per-habit unchecked color)
     val tagId: List<Long>?,
-    val habitCategory : Int = 0
+    val habitCategory : Int = 0,
+    // New flag to mark archived habits. Default false for existing rows when migrating
+    val isArchived: Boolean = false,
+    // New flags for locked habits
+    val isLocked: Boolean = false,
+    val passKey: String? = null
 )
 
 @Entity(

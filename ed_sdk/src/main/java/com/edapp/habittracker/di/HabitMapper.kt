@@ -67,6 +67,7 @@ object HabitMapper {
                 )
             }
 
+        val (totalDays, completedDays, streak) = logs.calculateStats()
         return Habit(
             id = habit.habitId,
             title = habit.title,
@@ -76,8 +77,41 @@ object HabitMapper {
             consistencyIcon = IconMapper.getIconByName(habit.consistencyIconName),
             color = Color(habit.colorValue.toULong()),
             uncheckedColorValue = Color(habit.uncheckedColorValue.toULong()),
-            todayHabitStatus = todayHabitStatus
+            todayHabitStatus = todayHabitStatus,
+            totalDays = totalDays,
+            completedDays = completedDays,
+            streake = streak
         )
+    }
+
+    fun List<HabitLogEntity>.calculateStats(): Triple<Int, Int, Int> {
+        if (isEmpty()) return Triple(0, 0, 0)
+
+        val sortedLogs = this.sortedBy { it.epochDay }
+
+        val totalDays = sortedLogs.size
+        val completedDays = sortedLogs.count { it.status != 0 }
+
+        val logMap = sortedLogs.associateBy { it.epochDay }
+
+        var streak = 0
+        var currentDay = java.time.LocalDate.now().toEpochDay()
+
+        // ✅ Safety limit: cannot exceed total logs
+        val maxIterations = sortedLogs.size
+
+        repeat(maxIterations) {
+            val log = logMap[currentDay]
+
+            if (log != null && log.status != 0) {
+                streak++
+                currentDay--
+            } else {
+                return@repeat
+            }
+        }
+
+        return Triple(totalDays, completedDays, streak)
     }
 }
 

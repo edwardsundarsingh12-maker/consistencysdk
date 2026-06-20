@@ -12,5 +12,9 @@ data class UpdateHabit(
     val isNewHabit: Boolean = true,
     val color: Color = Color.Blue,
     val uncheckedColorValue: Color = color.copy(alpha = 0.05f),
-    val tagIds: Set<Long> = emptySet<Long>()
+    val tagIds: Set<Long> = emptySet<Long>(),
+    // whether the habit is archived (hidden from main lists)
+    val isArchived: Boolean = false,
+    // whether the habit is locked (requires passkey to view)
+    val isLocked: Boolean = false
 )

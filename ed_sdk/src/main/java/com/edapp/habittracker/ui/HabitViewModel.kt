@@ -1,5 +1,6 @@
 package com.edapp.habittracker.ui
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
@@ -15,7 +16,11 @@ import com.edapp.habittracker.util.PreferenceUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
@@ -25,30 +30,60 @@ class HabitViewModel @Inject constructor(
     private val repository: HabitRepository
 ) : ViewModel() {
 
+    // Tags currently used to FILTER the main habit list (independent from the
+    // per-habit tag selection used while editing a habit — see addOrRemoveTag).
+    private val _selectedTags = MutableStateFlow<Set<Long>>(emptySet())
+    val selectedTags: StateFlow<Set<Long>> = _selectedTags
+
+    // True until the habits list has emitted its first real value from the database.
+    // Lets the UI tell "still loading" apart from "loaded and genuinely empty".
+    private val _isLoadingHabits = MutableStateFlow(true)
+    val isLoadingHabits: StateFlow<Boolean> = _isLoadingHabits
+
     @RequiresApi(Build.VERSION_CODES.O)
-    val todayEpochDat = LocalDate.now().toEpochDay()
-    private val _habits = MutableStateFlow<List<Habit>>(emptyList())
-    val habits: StateFlow<List<Habit>> = _habits
+    val habits = _selectedTags
+        .flatMapLatest { tags ->
+            repository.getAllHabits(tags.toList())
+        }
+        .onEach { _isLoadingHabits.value = false }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    private val _updateHabit  = MutableStateFlow<UpdateHabit>(UpdateHabit())
+    private val _allTags  = MutableStateFlow<List<HabitTag>>(emptyList())
+
+    val editOrAddHabit = _updateHabit
+    val allTags = _allTags
 
     init {
         viewModelScope.launch {
 //            repository.insertDummyHabits(3)
 //            repository.insertDummyHabitsWithLogs(5,30)
         }
-        loadHabits()
         getAllTag()
     }
 
-    private val _isRowView: MutableStateFlow<Boolean> = MutableStateFlow(PreferenceUtil.isRowView())
-    val isRowView: StateFlow<Boolean> = _isRowView
+    fun setTags(tags: List<HabitTag>) {
+        _allTags.value = tags
+    }
 
-    private val _updateHabit  = MutableStateFlow<UpdateHabit>(UpdateHabit())
-    private val _allTags  = MutableStateFlow<List<HabitTag>>(emptyList())
+    /** Toggle a tag in the main-list FILTER selection. */
+    fun toggleTag(tagId: Long) {
+        _selectedTags.value = _selectedTags.value.toMutableSet().apply {
+            if (contains(tagId)) {
+                remove(tagId)
+            } else {
+                add(tagId)
+            }
+        }
+    }
 
-
-
-    val editOrAddHabit = _updateHabit
-    val allTags = _allTags
+    fun clearSelection() {
+        _selectedTags.value = emptySet()
+    }
 
     fun addReminder(reminder: ReminderData) {
         val reminders = (_updateHabit.value.reminderList ?: emptyList()).toMutableList()
@@ -77,7 +112,9 @@ class HabitViewModel @Inject constructor(
         selectedHabitConsistencyIcon: String? = null,
         selectedHabitIcon: String? = null,
         color: Color? = null,
-        uncheckedColorValue: Color? = null
+        uncheckedColorValue: Color? = null,
+        isArchived: Boolean? = null,
+        isLocked: Boolean? = null
     ) {
         title?.let {
             _updateHabit.value = _updateHabit.value.copy(title = it)
@@ -103,12 +140,18 @@ class HabitViewModel @Inject constructor(
             _updateHabit.value = _updateHabit.value.copy(uncheckedColorValue = it)
         }
 
+        isArchived?.let {
+            _updateHabit.value = _updateHabit.value.copy(isArchived = it)
+        }
 
+        isLocked?.let {
+            _updateHabit.value = _updateHabit.value.copy(isLocked = it)
+        }
     }
 
     fun saveHabit() {
         viewModelScope.launch {
-            repository.insertNewHabit(_updateHabit.value)
+            repository.insertOrUpdateHabit(_updateHabit.value)
             _updateHabit.value = UpdateHabit()
         }
     }
@@ -117,11 +160,15 @@ class HabitViewModel @Inject constructor(
     fun getAllTag(){
         viewModelScope.launch(Dispatchers.IO) {
             repository.getAllHabitsTag().collect {
-                _allTags.value = it ?: emptyList()
+                try{ _allTags.value = it ?: emptyList() }
+                catch (e: Exception){
+                    Log.d("12345678", "getAllTag: Error fetching tags: ${e.message}")
+                }
             }
         }
     }
 
+    /** Toggle a tag on the habit currently being created/edited (per-habit selection). */
     fun addOrRemoveTag(tagId: Long) {
         _updateHabit.value = _updateHabit.value.copy(
             tagIds = _updateHabit.value.tagIds.toMutableSet().apply {
@@ -142,19 +189,17 @@ class HabitViewModel @Inject constructor(
         }
     }
 
-    fun loadHabits() {
+    fun setHabitArchived(habitId: Long, isArchived: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
-            val habits = repository.getAllHabits()
-            habits.collect {
-                _habits.value = it
-            }
+            repository.setHabitArchived(habitId, isArchived)
         }
     }
 
     fun updateTodayProgress(habitStatus: HabitStatusEnum, habitOwnerId: Long ) {
         viewModelScope.launch(Dispatchers.IO) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                repository.updateHabitStatus(HabitLog(habitOwnerId,todayEpochDat, habitStatus))
+                val todayEpochDat = LocalDate.now().toEpochDay()
+                repository.updateHabitStatus(HabitLog(habitOwnerId, todayEpochDat, habitStatus))
             }
         }
     }
@@ -167,11 +212,57 @@ class HabitViewModel @Inject constructor(
         }
     }
 
-
+    private val _isRowView: MutableStateFlow<Boolean> = MutableStateFlow(PreferenceUtil.isRowView())
+    val isRowView: StateFlow<Boolean> = _isRowView
 
 
     fun setIsRowView(isRowView: Boolean) {
         PreferenceUtil.setIsRowView(isRowView)
         _isRowView.value = PreferenceUtil.isRowView()
+    }
+
+    fun setAsLocked(habitId: Long, passKey: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.setHabitLocked(habitId, true, passKey)
+        }
+    }
+
+    fun loadHabitForEditing(habitId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val habitEntity = repository.getHabitById(habitId)
+            habitEntity?.let {
+                val updateHabit = UpdateHabit(
+                    title = it.title,
+                    description = it.description,
+                    selectedHabitConsistencyIcon = it.consistencyIconName ?: "Star",
+                    selectedHabitIcon = it.iconName ?: "Work",
+                    reminderList = it.reminders,
+                    oldHabitDbPrimaryKey = it.habitId,
+                    isNewHabit = false,
+                    color = Color(it.colorValue.toULong()),
+                    uncheckedColorValue = Color(it.uncheckedColorValue.toULong()),
+                    tagIds = it.tagId?.toSet() ?: emptySet(),
+                    isArchived = it.isArchived,
+                    isLocked = it.isLocked
+                )
+                _updateHabit.value = updateHabit
+            }
+        }
+    }
+
+    fun resetHabitEditState() {
+        _updateHabit.value = UpdateHabit()
+    }
+
+    fun deleteTag(tag: HabitTag) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                repository.deleteTag(tag.tagId)
+                // Refresh tags list after deletion
+                getAllTag()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 }

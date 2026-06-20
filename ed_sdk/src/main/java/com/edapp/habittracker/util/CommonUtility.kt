@@ -2,17 +2,20 @@ package com.edapp.habittracker.util
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.widget.Toast
 import androidx.annotation.RequiresPermission
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.core.net.toUri
 
 
 object CommonUtil {
@@ -52,6 +55,57 @@ object CommonUtil {
     fun dpToSp(dp: Dp): TextUnit {
         val density = LocalDensity.current
         return with(density) { dp.toSp() }
+    }
+
+    fun sendFeedbackEmail(
+        context: Context
+    ) {
+
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+
+            data = "mailto:".toUri()
+
+            putExtra(
+                Intent.EXTRA_EMAIL,
+                arrayOf(
+                    "edwardsundarsingh12@gmail.com"
+                )
+            )
+
+            putExtra(
+                Intent.EXTRA_SUBJECT,
+                "HabitTracker Feedback"
+            )
+
+            putExtra(
+                Intent.EXTRA_TEXT,
+                buildString {
+
+                    append("\n\n")
+                    append("-------- Device Info --------\n")
+                    append("Android Version: ${Build.VERSION.RELEASE}\n")
+                    append("Device: ${Build.MANUFACTURER} ${Build.MODEL}\n")
+                }
+            )
+        }
+
+        try {
+
+            context.startActivity(
+                Intent.createChooser(
+                    intent,
+                    "Send Feedback"
+                )
+            )
+
+        } catch (e: Exception) {
+
+            Toast.makeText(
+                context,
+                "No email app found",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 }
 
