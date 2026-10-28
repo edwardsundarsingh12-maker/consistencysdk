@@ -13,3 +13,13 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Added: build outputs, release artifacts & signing
+build/
+.kotlin/
+app/release/
+*.apk
+*.aab
+*.jks
+*.keystore
+keystore.properties
